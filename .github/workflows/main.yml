@@ -1,62 +1,35 @@
 name: Build Android APK
 on:
   push:
-    branches: [ "main" ]
-
+    branches:
+      - main
+ 
 jobs:
   build:
-    # 1. USE STABLE UBUNTU VERSION (Fixes the crash)
-    runs-on: ubuntu-22.04
-
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-
-      # 2. Setup Python 3.9 (Most stable for Buildozer)
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
+ 
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
-
-      # 3. Install Only Essential Dependencies
-      - name: Install System Dependencies
+          python-version: '3.11'
+ 
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+ 
+      # ESTE PASSO VAI MOSTRAR NO LOG QUAIS ARQUIVOS ESTÃO LÁ
+      - name: Debug - List files
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential git python3-pip python3-dev \
-            ffmpeg libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
-            libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
-            zlib1g-dev libgstreamer1.0-dev gstreamer1.0-plugins-base \
-            libltdl-dev unzip zip openjdk-17-jdk autoconf libtool pkg-config \
-            libffi-dev libssl-dev
-          
-          # Install Buildozer
-          pip3 install --upgrade buildozer cython==0.29.33
-
-      # 4. Configure and Build
+          echo "Listando arquivos na raiz:"
+          ls -la
       - name: Build APK
-        run: |
-          buildozer init
-          
-          # --- SETTINGS ---
-          sed -i 's/title = My Application/title = Dushanbe Survey/' buildozer.spec
-          sed -i 's/package.name = myapp/package.name = odsurvey/' buildozer.spec
-          sed -i 's/package.domain = org.test/package.domain = org.dushanbe/' buildozer.spec
-          
-          # Add Libraries
-          sed -i 's/requirements = python3,kivy/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer/' buildozer.spec
-          
-          # Add Permissions
-          sed -i 's/#android.permissions = INTERNET/android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE/' buildozer.spec
-          
-          # Lock Android NDK version to prevent errors
-          sed -i 's/# android.ndk_api = 21/android.ndk_api = 21/' buildozer.spec
-          
-          # --- BUILD COMMAND ---
-          yes | buildozer android debug
-
-      # 5. Upload APK
+        # O ponto "." no final diz para usar o diretório atual
+        # O "yes" aceita as licenças do Android SDK automaticamente
+        run: yes | flet build apk . --verbose
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: survey-apk
-          path: bin/*.apk
+          name: app-release
+          path: build/apk/app-release.apk
