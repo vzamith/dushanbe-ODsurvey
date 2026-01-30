@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      # 2. Install Buildozer and Dependencies
+      # 2. Install System Dependencies
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -28,32 +28,37 @@ jobs:
             gstreamer1.0-plugins-good libltdl-dev unzip zip openjdk-17-jdk \
             autoconf libtool pkg-config libncurses5-dev libncursesw5-dev \
             libtinfo5 cmake libffi-dev libssl-dev
+          
+          # Install Buildozer and Cython
           pip3 install --upgrade buildozer cython==0.29.33
 
-      # 3. Create Buildozer Spec and Build
+      # 3. Configure and Build
       - name: Build with Buildozer
         run: |
           # Initialize default spec file
           buildozer init
           
-          # Edit spec file settings automatically
-          # Change title
+          # --- AUTOMATED SETTINGS ---
+          # 1. Title and Names
           sed -i 's/title = My Application/title = Dushanbe Survey/' buildozer.spec
-          # Change package name
           sed -i 's/package.name = myapp/package.name = odsurvey/' buildozer.spec
-          # Change domain
           sed -i 's/package.domain = org.test/package.domain = org.dushanbe/' buildozer.spec
           
-          # Add requirements (Critical step)
+          # 2. Requirements (CRITICAL: Kivy + KivyMD + Plyer)
           sed -i 's/requirements = python3,kivy/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer/' buildozer.spec
           
-          # Add permissions for storage
+          # 3. Permissions (Storage)
           sed -i 's/#android.permissions = INTERNET/android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE/' buildozer.spec
           
-          # Run the build
-          buildozer android debug
+          # 4. Java/Gradle Tweaks (Helps prevent errors)
+          # Force a specific NDK version that is stable
+          sed -i 's/# android.ndk_api = 21/android.ndk_api = 21/' buildozer.spec
+          
+          # --- THE BUILD COMMAND ---
+          # "yes |" forces acceptance of the SDK license
+          yes | buildozer android debug --log_level 2
 
-      # 4. Upload the APK so you can download it
+      # 4. Upload the APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
