@@ -5,62 +5,58 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # 1. USE STABLE UBUNTU VERSION (Fixes the crash)
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: actions/checkout@v2
 
-      # 1. Setup Python
+      # 2. Setup Python 3.9 (Most stable for Buildozer)
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.10'
+          python-version: '3.9'
 
-      # 2. Install Dependencies (FIXED)
-      - name: Install Dependencies
+      # 3. Install Only Essential Dependencies
+      - name: Install System Dependencies
         run: |
-          # Prevent "What is your Timezone?" prompts
-          export DEBIAN_FRONTEND=noninteractive
-          
           sudo apt-get update
-          
-          # Install only the strictly necessary tools for Buildozer
           sudo apt-get install -y \
-            python3-pip build-essential git python3 python3-dev \
-            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            build-essential git python3-pip python3-dev \
+            ffmpeg libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
-            zlib1g-dev libltdl-dev unzip zip openjdk-17-jdk \
-            autoconf libtool pkg-config libncurses5-dev libncursesw5-dev \
-            libtinfo5 cmake libffi-dev libssl-dev
-
+            zlib1g-dev libgstreamer1.0-dev gstreamer1.0-plugins-base \
+            libltdl-dev unzip zip openjdk-17-jdk autoconf libtool pkg-config \
+            libffi-dev libssl-dev
+          
           # Install Buildozer
           pip3 install --upgrade buildozer cython==0.29.33
 
-      # 3. Configure and Build
-      - name: Build with Buildozer
+      # 4. Configure and Build
+      - name: Build APK
         run: |
           buildozer init
           
-          # --- AUTOMATED SETTINGS ---
+          # --- SETTINGS ---
           sed -i 's/title = My Application/title = Dushanbe Survey/' buildozer.spec
           sed -i 's/package.name = myapp/package.name = odsurvey/' buildozer.spec
           sed -i 's/package.domain = org.test/package.domain = org.dushanbe/' buildozer.spec
           
-          # Requirements
+          # Add Libraries
           sed -i 's/requirements = python3,kivy/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer/' buildozer.spec
           
-          # Permissions
+          # Add Permissions
           sed -i 's/#android.permissions = INTERNET/android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE/' buildozer.spec
           
-          # NDK Fix
+          # Lock Android NDK version to prevent errors
           sed -i 's/# android.ndk_api = 21/android.ndk_api = 21/' buildozer.spec
           
           # --- BUILD COMMAND ---
-          yes | buildozer android debug --log_level 2
+          yes | buildozer android debug
 
-      # 4. Upload the APK
+      # 5. Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: dushanbe-survey-apk
+          name: survey-apk
           path: bin/*.apk
