@@ -5,60 +5,60 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    # 1. THE FIX: Use Ubuntu 20.04 (Legacy Stable) to avoid package conflicts
+    runs-on: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v2
 
+      # 2. Use Python 3.8 (Most compatible with Ubuntu 20.04)
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.9'
+          python-version: '3.8'
 
-      - name: Install Dependencies (Aggressive Fix)
+      # 3. Install Dependencies (Standard 20.04 List)
+      - name: Install System Dependencies
         run: |
           sudo apt-get update
+          export DEBIAN_FRONTEND=noninteractive
           
-          # Install aptitude (smarter package manager)
-          sudo apt-get install -y aptitude
-          
-          # Use aptitude to install dependencies (it auto-resolves conflicts)
-          # We accept the first solution it finds (-y)
-          sudo aptitude install -y \
+          # Install the standard Buildozer prerequisites
+          sudo apt-get install -y \
             build-essential git python3-pip python3-dev \
             ffmpeg libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
             zlib1g-dev libgstreamer1.0-dev gstreamer1.0-plugins-base \
-            libltdl-dev unzip zip autoconf libtool pkg-config \
-            libffi-dev libssl-dev
-            
-          # Install Java separately to avoid conflicts
-          sudo apt-get install -y openjdk-11-jdk
+            libltdl-dev unzip zip openjdk-11-jdk autoconf libtool pkg-config \
+            libffi-dev libssl-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake
           
           # Install Buildozer
           pip3 install --upgrade buildozer cython==0.29.33
 
+      # 4. Configure and Build
       - name: Build APK
         run: |
           buildozer init
           
-          # --- SETTINGS ---
+          # --- APP SETTINGS ---
           sed -i 's/title = My Application/title = Dushanbe Survey/' buildozer.spec
           sed -i 's/package.name = myapp/package.name = odsurvey/' buildozer.spec
           sed -i 's/package.domain = org.test/package.domain = org.dushanbe/' buildozer.spec
           
-          # Add Libraries
+          # LIBRARIES (Kivy + KivyMD + Plyer)
           sed -i 's/requirements = python3,kivy/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer/' buildozer.spec
           
-          # Add Permissions
+          # PERMISSIONS (For saving CSV)
           sed -i 's/#android.permissions = INTERNET/android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE/' buildozer.spec
           
-          # Lock Android NDK
+          # FIX: Lock Android NDK to version 21 (prevents build errors)
           sed -i 's/# android.ndk_api = 21/android.ndk_api = 21/' buildozer.spec
           
-          # --- BUILD ---
+          # --- BUILD COMMAND ---
+          # "yes" automatically accepts the license agreement
           yes | buildozer android debug
 
+      # 5. Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
