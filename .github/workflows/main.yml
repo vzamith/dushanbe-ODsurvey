@@ -16,46 +16,46 @@ jobs:
         with:
           python-version: '3.10'
 
-      # 2. Install System Dependencies
+      # 2. Install Dependencies (FIXED)
       - name: Install Dependencies
         run: |
+          # Prevent "What is your Timezone?" prompts
+          export DEBIAN_FRONTEND=noninteractive
+          
           sudo apt-get update
+          
+          # Install only the strictly necessary tools for Buildozer
           sudo apt-get install -y \
-            python3-pip build-essential git python3 python3-dev ffmpeg \
+            python3-pip build-essential git python3 python3-dev \
             libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
-            zlib1g-dev libgstreamer1.0 gstreamer1.0-plugins-base \
-            gstreamer1.0-plugins-good libltdl-dev unzip zip openjdk-17-jdk \
+            zlib1g-dev libltdl-dev unzip zip openjdk-17-jdk \
             autoconf libtool pkg-config libncurses5-dev libncursesw5-dev \
             libtinfo5 cmake libffi-dev libssl-dev
-          
-          # Install Buildozer and Cython
+
+          # Install Buildozer
           pip3 install --upgrade buildozer cython==0.29.33
 
       # 3. Configure and Build
       - name: Build with Buildozer
         run: |
-          # Initialize default spec file
           buildozer init
           
           # --- AUTOMATED SETTINGS ---
-          # 1. Title and Names
           sed -i 's/title = My Application/title = Dushanbe Survey/' buildozer.spec
           sed -i 's/package.name = myapp/package.name = odsurvey/' buildozer.spec
           sed -i 's/package.domain = org.test/package.domain = org.dushanbe/' buildozer.spec
           
-          # 2. Requirements (CRITICAL: Kivy + KivyMD + Plyer)
+          # Requirements
           sed -i 's/requirements = python3,kivy/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer/' buildozer.spec
           
-          # 3. Permissions (Storage)
+          # Permissions
           sed -i 's/#android.permissions = INTERNET/android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE/' buildozer.spec
           
-          # 4. Java/Gradle Tweaks (Helps prevent errors)
-          # Force a specific NDK version that is stable
+          # NDK Fix
           sed -i 's/# android.ndk_api = 21/android.ndk_api = 21/' buildozer.spec
           
-          # --- THE BUILD COMMAND ---
-          # "yes |" forces acceptance of the SDK license
+          # --- BUILD COMMAND ---
           yes | buildozer android debug --log_level 2
 
       # 4. Upload the APK
