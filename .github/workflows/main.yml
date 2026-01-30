@@ -1,27 +1,26 @@
 name: Build Android APK
 on:
   push:
-    branches: 
-      - main
+    branches: [ "main" ]
 
 jobs:
   build:
-    # Use Ubuntu 20.04 (Older but much more stable for Android builds)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v2
 
-      # 1. Setup Python 3.8
+      # 1. Setup Python 3.9 (Matches your environment)
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.9'
 
-      # 2. Install Dependencies (Clean list for Ubuntu 20.04)
+      # 2. Install Dependencies
+      # This block installs the exact libraries needed for Kivy on Ubuntu 20.04
       - name: Install System Dependencies
         run: |
-          sudo apt-get update -y
+          sudo apt-get update
           sudo apt-get install -y \
             build-essential git python3-pip python3-dev \
             ffmpeg libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
@@ -30,30 +29,32 @@ jobs:
             libltdl-dev unzip zip openjdk-11-jdk autoconf libtool pkg-config \
             libffi-dev libssl-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake
           
-          # Install Buildozer
+          # Install Buildozer and Cython
           pip3 install --upgrade buildozer cython==0.29.33
 
-      # 3. Configure and Build (THIS WAS MISSING)
+      # 3. Create Config & Build
       - name: Build APK
         run: |
-          # Create the config file
+          # A. GENERATE THE CONFIG FILE
           buildozer init
           
-          # --- APP SETTINGS ---
+          # B. CONFIGURE SETTINGS
+          # App Name and Domain
           sed -i 's/title = My Application/title = Dushanbe Survey/' buildozer.spec
           sed -i 's/package.name = myapp/package.name = odsurvey/' buildozer.spec
           sed -i 's/package.domain = org.test/package.domain = org.dushanbe/' buildozer.spec
           
-          # REQUIREMENTS (Crucial: Kivy + KivyMD + Plyer)
-          sed -i 's/requirements = python3,kivy/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer/' buildozer.spec
+          # Requirements
+          sed -i 's/requirements = python3,kivy/requirements = python3,kivy==2.2.1,kivymd==1.1.1,pillow,plyer,urllib3,chardet,idna,requests/' buildozer.spec
           
-          # PERMISSIONS
+          # Permissions
           sed -i 's/#android.permissions = INTERNET/android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE/' buildozer.spec
           
-          # NDK FIX (Prevents compilation errors)
+          # Fix Android NDK version
           sed -i 's/# android.ndk_api = 21/android.ndk_api = 21/' buildozer.spec
-          
-          # --- START BUILD ---
+          sed -i 's/# android.api = 31/android.api = 33/' buildozer.spec
+
+          # C. RUN THE BUILD
           yes | buildozer android debug
 
       # 4. Upload APK
