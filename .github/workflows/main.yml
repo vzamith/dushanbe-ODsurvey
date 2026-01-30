@@ -1,12 +1,13 @@
 name: Build Android APK
 on:
   push:
-    branches: [ "main" ]
+    branches: 
+      - main
 
 jobs:
   build:
     # Use Ubuntu 20.04 (Older but much more stable for Android builds)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: actions/checkout@v2
@@ -15,7 +16,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.8'
+          python-version: '3.9'
 
       # 2. Install Dependencies (Clean list for Ubuntu 20.04)
       - name: Install System Dependencies
